@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"sort"
 	"strconv"
@@ -344,6 +345,36 @@ func (h *Headscale) getPeers(machine *Machine) (Machines, error) {
 	return peers, nil
 }
 
+func (h *Headscale) isLocalRange(address *string) bool {
+	// split ip and port
+	ipstr, _, err := net.SplitHostPort(*address)
+	if err != nil {
+		return false
+	}
+	// check ip in h.cfg.IPPrefixes
+	for _, prefix := range h.cfg.IPPrefixes {
+		ip, err := netip.ParseAddr(ipstr)
+		if err != nil {
+			return false
+		}
+		if prefix.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *Headscale) removeLocalRange(peer *Machine) bool {
+	endpoints := make(StringList, 0, len(peer.Endpoints))
+	for _, addr := range peer.Endpoints {
+		if !h.isLocalRange(&addr) {
+			endpoints = append(endpoints, addr)
+		}
+	}
+	peer.Endpoints = endpoints
+	return true
+}
+
 func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	validPeers := make(Machines, 0)
 
@@ -353,7 +384,7 @@ func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	}
 
 	for _, peer := range peers {
-		if !peer.isExpired() {
+		if !peer.isExpired() && !h.removeLocalRange(&peer) {
 			validPeers = append(validPeers, peer)
 		}
 	}

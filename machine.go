@@ -384,7 +384,7 @@ func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	}
 
 	for _, peer := range peers {
-		if !peer.isExpired() && !h.removeLocalRange(&peer) {
+		if !peer.isExpired() && h.removeLocalRange(&peer) {
 			validPeers = append(validPeers, peer)
 		}
 	}

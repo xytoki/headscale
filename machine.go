@@ -413,6 +413,13 @@ func (h *Headscale) isIsolatedPeer(machine *Machine, peer *Machine) bool {
 	return true
 }
 
+func (h *Headscale) removeEndpointForIsolatePeer(machine *Machine, peer *Machine) bool {
+	if h.isIsolatedPeer(machine, peer) {
+		peer.Endpoints = make(StringList, 0)
+	}
+	return true
+}
+
 func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	validPeers := make(Machines, 0)
 
@@ -422,7 +429,7 @@ func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	}
 
 	for _, peer := range peers {
-		if !peer.isExpired() && h.removeLocalRange(&peer) && !h.isIsolatedPeer(machine, &peer) {
+		if !peer.isExpired() && h.removeLocalRange(&peer) && h.removeEndpointForIsolatePeer(machine, &peer) {
 			validPeers = append(validPeers, peer)
 		}
 	}

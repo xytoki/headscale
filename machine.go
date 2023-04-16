@@ -375,6 +375,44 @@ func (h *Headscale) removeLocalRange(peer *Machine) bool {
 	return true
 }
 
+func (h *Headscale) isIsolatedPeer(machine *Machine, peer *Machine) bool {
+	// tag:isolated-{x} in machine.ForcedTags
+	// machine has no isolated tags, peer has no isolated tags: not isolated
+	// machine has one same isolated tag with peer: not isolated
+	if len(machine.ForcedTags) == 0 && len(peer.ForcedTags) == 0 {
+		return false
+	}
+	mtags := make(StringList, 0, len(machine.ForcedTags))
+	ptags := make(StringList, 0, len(peer.ForcedTags))
+	for _, tag := range machine.ForcedTags {
+		if strings.HasPrefix(tag, "tag:isolated-") {
+			mtags = append(mtags, tag)
+		}
+	}
+	for _, tag := range peer.ForcedTags {
+		if strings.HasPrefix(tag, "tag:isolated-") {
+			ptags = append(ptags, tag)
+		}
+	}
+	if len(mtags) == 0 && len(ptags) == 0 {
+		return false
+	}
+	if len(mtags) == 0 && len(ptags) > 0 {
+		return true
+	}
+	if len(mtags) > 0 && len(ptags) == 0 {
+		return true
+	}
+	for _, mtag := range mtags {
+		for _, ptag := range ptags {
+			if mtag == ptag {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	validPeers := make(Machines, 0)
 
@@ -384,7 +422,7 @@ func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	}
 
 	for _, peer := range peers {
-		if !peer.isExpired() && h.removeLocalRange(&peer) {
+		if !peer.isExpired() && h.removeLocalRange(&peer) && !h.isIsolatedPeer(machine, &peer) {
 			validPeers = append(validPeers, peer)
 		}
 	}

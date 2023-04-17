@@ -35,6 +35,30 @@ func (h *Headscale) getDERPMapByMachine(machine *Machine) *tailcfg.DERPMap {
 	}
 }
 
+func (h *Headscale) filterPeerDERP(machine *Machine, nodePeers []*tailcfg.Node) {
+	derpMagicIp := "127.3.3.40:"
+	ignRegions := make(map[string]bool)
+	defaultDerp := "0"
+	for _, tag := range machine.ForcedTags {
+		// tag:ignore-derp-{x}
+		if strings.HasPrefix(tag, "tag:ignore-derp-") {
+			ignRegions[strings.TrimPrefix(tag, "tag:ignore-derp-")] = true
+		}
+		if strings.HasPrefix(tag, "tag:fallback-derp-") {
+			defaultDerp = strings.TrimPrefix(tag, "tag:fallback-derp-")
+		}
+	}
+	if len(ignRegions) == 0 {
+		return
+	}
+	for _, node := range nodePeers {
+		derpPort := strings.TrimPrefix(node.DERP, derpMagicIp)
+		if _, ok := ignRegions[derpPort]; ok {
+			node.DERP = derpMagicIp + defaultDerp
+		}
+	}
+}
+
 func (h *Headscale) generateMapResponse(
 	mapRequest tailcfg.MapRequest,
 	machine *Machine,
@@ -77,6 +101,7 @@ func (h *Headscale) generateMapResponse(
 
 		return nil, err
 	}
+	h.filterPeerDERP(machine, nodePeers)
 
 	dnsConfig := getMapResponseDNSConfig(
 		h.cfg.DNSConfig,
@@ -126,6 +151,7 @@ func (h *Headscale) generateMapResponse(
 		ControlTime: &now,
 
 		Debug: &tailcfg.Debug{
+			DERPRoute:           "true",
 			DisableLogTail:      !h.cfg.LogTail.Enabled,
 			RandomizeClientPort: h.cfg.RandomizeClientPort,
 		},

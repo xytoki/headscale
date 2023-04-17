@@ -1,11 +1,39 @@
 package headscale
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"tailscale.com/tailcfg"
 )
+
+func (h *Headscale) getDERPMapByMachine(machine *Machine) *tailcfg.DERPMap {
+	ignRegions := make(map[string]bool)
+	for _, tag := range machine.ForcedTags {
+		// tag:ignore-derp-{x}
+		if strings.HasPrefix(tag, "tag:ignore-derp-") {
+			ignRegions[strings.TrimPrefix(tag, "tag:ignore-derp-")] = true
+		}
+	}
+
+	if len(ignRegions) == 0 {
+		return h.DERPMap
+	}
+	regions := make(map[int]*tailcfg.DERPRegion)
+	for id, region := range h.DERPMap.Regions {
+		if _, ok := ignRegions[fmt.Sprintf("%d", id)]; ok {
+			continue
+		}
+		regions[id] = region
+	}
+
+	return &tailcfg.DERPMap{
+		Regions:            regions,
+		OmitDefaultRegions: h.DERPMap.OmitDefaultRegions,
+	}
+}
 
 func (h *Headscale) generateMapResponse(
 	mapRequest tailcfg.MapRequest,
@@ -64,7 +92,7 @@ func (h *Headscale) generateMapResponse(
 		Node:      node,
 
 		// TODO: Only send if updated
-		DERPMap: h.DERPMap,
+		DERPMap: h.getDERPMapByMachine(machine),
 
 		// TODO: Only send if updated
 		Peers: nodePeers,

@@ -444,7 +444,7 @@ func GetDNSConfig() (*tailcfg.DNSConfig, string) {
 					}
 				}
 				dnsConfig.Routes[domain] = restrictedResolvers
-				domains = append(domains, domain)
+				// domains = append(domains, domain)
 			}
 			dnsConfig.Domains = domains
 		}

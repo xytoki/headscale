@@ -36,7 +36,7 @@ func (h *Headscale) getDERPMapByMachine(machine *Machine) *tailcfg.DERPMap {
 }
 
 func (h *Headscale) filterPeerDERP(machine *Machine, nodePeers []*tailcfg.Node) {
-	derpMagicIp := "127.3.3.40:"
+	derpMagicIP := "127.3.3.40:"
 	ignRegions := make(map[string]bool)
 	defaultDerp := "0"
 	for _, tag := range machine.ForcedTags {
@@ -52,9 +52,9 @@ func (h *Headscale) filterPeerDERP(machine *Machine, nodePeers []*tailcfg.Node) 
 		return
 	}
 	for _, node := range nodePeers {
-		derpPort := strings.TrimPrefix(node.DERP, derpMagicIp)
+		derpPort := strings.TrimPrefix(node.DERP, derpMagicIP)
 		if _, ok := ignRegions[derpPort]; ok {
-			node.DERP = derpMagicIp + defaultDerp
+			node.DERP = derpMagicIP + defaultDerp
 		}
 	}
 }

@@ -361,17 +361,19 @@ func (h *Headscale) isLocalRange(address *string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
 func (h *Headscale) removeLocalRange(peer *Machine) bool {
 	endpoints := make(StringList, 0, len(peer.Endpoints))
-	for _, addr := range peer.Endpoints {
-		if !h.isLocalRange(&addr) {
-			endpoints = append(endpoints, addr)
+	for k := range peer.Endpoints {
+		if !h.isLocalRange(&peer.Endpoints[k]) {
+			endpoints = append(endpoints, peer.Endpoints[k])
 		}
 	}
 	peer.Endpoints = endpoints
+
 	return true
 }
 
@@ -410,6 +412,7 @@ func (h *Headscale) isIsolatedPeer(machine *Machine, peer *Machine) bool {
 			}
 		}
 	}
+
 	return true
 }
 
@@ -429,6 +432,7 @@ func (h *Headscale) getValidPeers(machine *Machine) (Machines, error) {
 	}
 
 	for _, peer := range peers {
+		peer := peer
 		if !peer.isExpired() && h.removeLocalRange(&peer) && h.removeEndpointForIsolatePeer(machine, &peer) {
 			validPeers = append(validPeers, peer)
 		}

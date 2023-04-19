@@ -1343,3 +1343,17 @@ func (h *Headscale) GenerateGivenName(machineKey string, suppliedName string) (s
 
 	return givenName, nil
 }
+
+func (machines Machines) FilterByIP(ip netip.Addr) Machines {
+	found := make(Machines, 0)
+
+	for _, machine := range machines {
+		for _, mIP := range machine.IPAddresses {
+			if ip == mIP {
+				found = append(found, machine)
+			}
+		}
+	}
+
+	return found
+}

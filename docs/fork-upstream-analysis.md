@@ -81,6 +81,50 @@ So porting is not a clean cherry-pick; each behavior must be reimplemented again
 
 These are deployment-specific behaviors not present upstream under the same tag semantics. If still required operationally, they should be reintroduced as configurable features in upstream’s current `hscontrol` model, not by replaying old commits.
 
+## Targeted conflict: upstream tagged identity vs fork `tag:isolated-*`
+
+Upstream now explicitly documents a stricter identity model:
+
+- tagged and user-owned identities are mutually exclusive
+- tagged devices derive identity from tags (not users)
+- converting a node to tagged changes ownership semantics
+
+The fork’s isolation behavior was implemented differently:
+
+- `isIsolatedPeer` reads `machine.ForcedTags` and `peer.ForcedTags`
+- if `tag:isolated-*` sets do not overlap, peer endpoints are removed
+- this runs at peer-map generation time (transport visibility), not policy evaluation time
+
+### Why this can conflict
+
+1. **Identity plane mismatch**
+   - Upstream tags are part of identity/ownership semantics.
+   - Fork isolation tags are treated as ad-hoc transport filters.
+   - Result: node behavior can diverge from ACL intent.
+
+2. **Policy bypass risk**
+   - Upstream policy uses tag owners and identity-aware ACL resolution.
+   - Fork isolation does not consult tag owner policy when zeroing endpoints.
+   - Result: hidden coupling between tags and reachability outside ACL model.
+
+3. **Autogroup semantics drift**
+   - Upstream distinguishes `autogroup:member` (personal/untagged) and `autogroup:tagged`.
+   - Isolation logic only inspects `ForcedTags` intersections and ignores these distinctions.
+   - Result: surprising behavior for mixed personal/tagged environments.
+
+### Resolution strategy
+
+1. **Do not port `tag:isolated-*` as raw tag-prefix logic.**
+2. **Re-express isolation as policy** in upstream model:
+   - either explicit ACL constructs (preferred), or
+   - explicit config that is evaluated through policy/identity checks.
+3. **Validate against identity mode**:
+   - tagged nodes: evaluate by tag identity
+   - personal nodes: evaluate by user identity
+   - never combine both implicitly.
+4. **Keep transport effects policy-derived**:
+   - endpoint suppression/DERP-forcing should only occur when derived from resolved policy, not direct string-prefix tag scans.
+
 ## Practical recommendation
 
 1. Rebase strategy: **do not cherry-pick old fork commits directly**.
